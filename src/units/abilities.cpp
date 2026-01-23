@@ -1390,7 +1390,7 @@ namespace { // Helpers for attack_type::special_active()
 		std::unique_ptr<scoped_weapon_info> weapon_var;
 		if (weapon) {
 			config weapon_cfg = weapon->to_config();
-			weapon_var.reset(new scoped_weapon_info("weapon", weapon_cfg));
+			weapon_var = std::make_unique<scoped_weapon_info>("weapon", weapon_cfg);
 		}
 
 		// Passed.
