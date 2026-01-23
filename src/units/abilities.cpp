@@ -40,6 +40,7 @@
 #include "formula/formula.hpp"
 #include "formula/function_gamestate.hpp"
 #include "deprecation.hpp"
+#include "variable.hpp"
 
 
 
@@ -1383,6 +1384,13 @@ namespace { // Helpers for attack_type::special_active()
 		if (auto filter_weapon = filter_child->optional_child("filter_weapon") ) {
 			if ( !weapon || !weapon->matches_filter(*filter_weapon, tag_name) )
 				return false;
+		}
+
+		// Auto-store the weapon as a variable for use in filters
+		std::unique_ptr<scoped_weapon_info> weapon_var;
+		if (weapon) {
+			config weapon_cfg = weapon->to_config();
+			weapon_var.reset(new scoped_weapon_info("weapon", weapon_cfg));
 		}
 
 		// Passed.
