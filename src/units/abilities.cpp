@@ -40,6 +40,7 @@
 #include "formula/formula.hpp"
 #include "formula/function_gamestate.hpp"
 #include "deprecation.hpp"
+#include "variable.hpp"
 
 
 
@@ -1347,6 +1348,7 @@ namespace { // Helpers for attack_type::special_active()
 	 * @param[in]  for_listing
 	 * @param[in]  child_tag   The tag of the child filter to use.
 	 * @param[in]  tag_name    Parameter used for don't have infinite recusion for some filter attribute.
+	 * @param[in]  other_weapon Opponent's weapon (optional, for auto-storing as $second_weapon).
 	 */
 	static bool special_unit_matches(unit_const_ptr & u,
 		                             unit_const_ptr & u2,
@@ -1354,7 +1356,8 @@ namespace { // Helpers for attack_type::special_active()
 		                             const_attack_ptr weapon,
 		                             const config & filter,
 									 const bool for_listing,
-		                             const std::string & child_tag, const std::string& tag_name)
+		                             const std::string & child_tag, const std::string& tag_name,
+		                             const_attack_ptr other_weapon = nullptr)
 	{
 		if (for_listing && !loc.valid())
 			// The special's context was set to ignore this unit, so assume we pass.
@@ -1383,6 +1386,20 @@ namespace { // Helpers for attack_type::special_active()
 		if (auto filter_weapon = filter_child->optional_child("filter_weapon") ) {
 			if ( !weapon || !weapon->matches_filter(*filter_weapon, tag_name) )
 				return false;
+		}
+
+		// Auto-store the weapon as a variable for use in filters
+		std::unique_ptr<scoped_weapon_info> weapon_var;
+		if (weapon) {
+			config weapon_cfg = weapon->to_config();
+			weapon_var = std::make_unique<scoped_weapon_info>("weapon", weapon_cfg);
+		}
+
+		// Auto-store the opponent's weapon if available
+		std::unique_ptr<scoped_weapon_info> second_weapon_var;
+		if (other_weapon) {
+			config second_weapon_cfg = other_weapon->to_config();
+			second_weapon_var = std::make_unique<scoped_weapon_info>("second_weapon", second_weapon_cfg);
 		}
 
 		// Passed.
@@ -2021,16 +2038,16 @@ bool attack_type::special_active_impl(
 	//then the type of special must be entered to avoid calling
 	//the function of this special in matches_filter()
 	std::string self_tag_name = whom_is_self ? tag_name : "";
-	if (!special_unit_matches(self, other, self_loc, self_attack, special, is_for_listing, filter_self, self_tag_name))
+	if (!special_unit_matches(self, other, self_loc, self_attack, special, is_for_listing, filter_self, self_tag_name, other_attack))
 		return false;
 	std::string opp_tag_name = !whom_is_self ? tag_name : "";
-	if (!special_unit_matches(other, self, other_loc, other_attack, special_backstab, is_for_listing, "filter_opponent", opp_tag_name))
+	if (!special_unit_matches(other, self, other_loc, other_attack, special_backstab, is_for_listing, "filter_opponent", opp_tag_name, self_attack))
 		return false;
 	std::string att_tag_name = is_attacker ? tag_name : "";
-	if (!special_unit_matches(att, def, att_loc, att_weapon, special, is_for_listing, "filter_attacker", att_tag_name))
+	if (!special_unit_matches(att, def, att_loc, att_weapon, special, is_for_listing, "filter_attacker", att_tag_name, def_weapon))
 		return false;
 	std::string def_tag_name = !is_attacker ? tag_name : "";
-	if (!special_unit_matches(def, att, def_loc, def_weapon, special, is_for_listing, "filter_defender", def_tag_name))
+	if (!special_unit_matches(def, att, def_loc, def_weapon, special, is_for_listing, "filter_defender", def_tag_name, att_weapon))
 		return false;
 
 	const auto adjacent = get_adjacent_tiles(self_loc);
