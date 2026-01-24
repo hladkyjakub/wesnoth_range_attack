@@ -430,3 +430,19 @@ inline attack_itors make_attack_itors(attack_list& atks) {
 inline const_attack_itors make_attack_itors(const attack_list& atks) {
 	return boost::make_iterator_range(boost::make_indirect_iterator(atks.begin()), boost::make_indirect_iterator(atks.end()));
 }
+
+/**
+ * Helper function to convert const_attack_ptr to config.
+ * Declared in units/ptr.hpp, implemented here where config is known.
+ * 
+ * This function provides a clean way to get a config from an attack pointer,
+ * which is useful when passing weapon data to event data (ev.data) as shown in
+ * game_events/pump.cpp where weapons are stored as children "first" and "second",
+ * then retrieved via ev.data.optional_child("first") as optional_const_config.
+ * 
+ * @param weapon The attack pointer (can be null)
+ * @return config object with weapon data, or empty config if weapon is null
+ */
+inline config attack_config(const_attack_ptr weapon) {
+	return weapon ? weapon->to_config() : config();
+}
