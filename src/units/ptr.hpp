@@ -29,6 +29,24 @@ typedef std::shared_ptr<const unit> unit_const_ptr;
 // And attacks too!
 
 class attack_type;
+class config;
 
 using attack_ptr = std::shared_ptr<attack_type>;
 using const_attack_ptr = std::shared_ptr<const attack_type>;
+
+/**
+ * Helper function to convert const_attack_ptr to config.
+ * This is useful when you need to get the config representation of a weapon
+ * to pass to event data (ev.data) or to create an optional_const_config.
+ * 
+ * @param weapon The attack pointer (can be null)
+ * @return config object with weapon data, or empty config if weapon is null
+ * 
+ * Example usage:
+ *   dat.add_child("first", attack_config(weapon_ptr));
+ *   // Then later retrieve as optional_const_config:
+ *   optional_const_config cfg = ev.data.optional_child("first");
+ */
+inline config attack_config(const_attack_ptr weapon);
+
+// Implementation in attack_type.hpp to avoid circular dependency

@@ -1246,8 +1246,8 @@ void attack::unit_killed(unit_info& attacker,
 
 	// Get weapon info for last_breath and die events.
 	config dat;
-	config a_weapon_cfg = attacker_stats->weapon && attacker.valid() ? attacker_stats->weapon->to_config() : config();
-	config d_weapon_cfg = defender_stats->weapon && defender.valid() ? defender_stats->weapon->to_config() : config();
+	config a_weapon_cfg = attacker.valid() ? attack_config(attacker_stats->weapon) : config();
+	config d_weapon_cfg = defender.valid() ? attack_config(defender_stats->weapon) : config();
 
 	if(a_weapon_cfg["name"].empty()) {
 		a_weapon_cfg["name"] = "none";
