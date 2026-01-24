@@ -1348,7 +1348,7 @@ namespace { // Helpers for attack_type::special_active()
 	 * @param[in]  for_listing
 	 * @param[in]  child_tag   The tag of the child filter to use.
 	 * @param[in]  tag_name    Parameter used for don't have infinite recusion for some filter attribute.
-	 * @param[in]  other_weapon The opponent's weapon (optional, for auto-storing as $second_weapon).
+	 * @param[in]  other_weapon Opponent's weapon (optional, for auto-storing as $second_weapon).
 	 */
 	static bool special_unit_matches(unit_const_ptr & u,
 		                             unit_const_ptr & u2,
@@ -1396,10 +1396,10 @@ namespace { // Helpers for attack_type::special_active()
 		}
 
 		// Auto-store the opponent's weapon if available
-		std::unique_ptr<scoped_weapon_info> other_weapon_var;
+		std::unique_ptr<scoped_weapon_info> second_weapon_var;
 		if (other_weapon) {
-			config other_weapon_cfg = other_weapon->to_config();
-			other_weapon_var = std::make_unique<scoped_weapon_info>("second_weapon", other_weapon_cfg);
+			config second_weapon_cfg = other_weapon->to_config();
+			second_weapon_var = std::make_unique<scoped_weapon_info>("second_weapon", second_weapon_cfg);
 		}
 
 		// Passed.
