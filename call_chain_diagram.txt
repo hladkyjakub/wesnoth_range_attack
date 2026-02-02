@@ -1,0 +1,68 @@
+REACHMAP EARLY RETURN DURING MOVE&ATTACK - CALL CHAIN
+======================================================
+
+1. MOVE INITIATION
+   mouse_events.cpp:1206
+   mouse_handler::move_unit_along_current_route()
+        |
+        v
+   gui().unhighlight_reach()  <-- Sets reach_map_changed_ = true
+        |
+        v
+   
+2. ANIMATION LOOP
+   animation.cpp:1413,1420
+   unit_animator::wait_until()
+        |
+        v (called repeatedly during animation)
+        |
+   controller_base.cpp:408
+   controller_base::play_slice()  <-- *** KEY FUNCTION ***
+        |
+        v
+   events.cpp:418
+   events::draw()
+        |
+        v
+   draw_manager.cpp:753
+   draw_manager::sparkle()
+        |
+        v
+   draw_manager.cpp:144
+   draw_manager::update()
+        |
+        v
+   (iterates through all top-level drawables)
+        |
+        v
+   game_display.cpp:179
+   game_display::update()
+        |
+        v
+   display.cpp:3307
+   process_reachmap_changes()  <-- Processes changes
+        |                           Sets reach_map_changed_ = false
+        v
+   (animation continues...)
+
+3. ATTACK INITIATION
+   mouse_events.cpp:1430
+   mouse_handler::attack_enemy()
+        |
+        v
+   gui().unhighlight_reach()
+        |
+        v
+   display.cpp:3307
+   process_reachmap_changes()
+        |
+        v
+   display.cpp:3309
+   if (!reach_map_changed_) return;  <-- EARLY RETURN!
+                                          (reach_map_changed_ is already false)
+
+CONCLUSION
+==========
+controller_base::play_slice() is the code that causes process_reachmap_changes()
+to be called during animations, which processes the reach map changes before the
+attack code runs, causing the early return during attack initiation.
