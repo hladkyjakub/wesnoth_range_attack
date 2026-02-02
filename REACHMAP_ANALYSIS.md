@@ -105,7 +105,23 @@ After the move completes, the attack is initiated.
 // Line 1430: Try to clear reach map before attack
 gui().unhighlight_reach();
 ```
-But at this point, `reach_map_changed_` is already `false` because it was processed during the animation loop, so `process_reachmap_changes()` returns immediately without doing anything.
+
+**Critical Detail:** `unhighlight_reach()` only sets `reach_map_changed_ = true` if `reach_map_` is NOT empty:
+```cpp
+bool game_display::unhighlight_reach()
+{
+    units_that_can_reach_goal_.clear();
+    if(!reach_map_.empty()) {
+        reach_map_.clear();
+        reach_map_changed_ = true;
+        return true;
+    } else {
+        return false;  // reach_map already empty, no flag change!
+    }
+}
+```
+
+At this point (line 1430), `reach_map_` is already empty (cleared at line 1206), so the condition fails. The function returns false WITHOUT setting `reach_map_changed_ = true`. This is why `process_reachmap_changes()` doesn't process anything - the flag is still `false` from the previous processing.
 
 ## Sequence Diagram
 
@@ -149,11 +165,14 @@ move_unit_along_route() -> unit_animator::wait_until() [animation.cpp:1401]
 attack_enemy() [mouse_events.cpp:1430]
     |
     |--> gui().unhighlight_reach() [line 1430]
-         (reach_map_ already empty, reach_map_changed_ already false)
+         (reach_map_ already empty from line 1206)
+         (if(!reach_map_.empty()) check FAILS)
+         (does NOT set reach_map_changed_ = true)
+         (returns false - no-op)
          |
          v
          process_reachmap_changes() [display.cpp:3307]
-         (returns immediately at line 3309 due to early return)
+         (returns immediately at line 3309 due to reach_map_changed_ = false)
 ```
 
 ## Conclusion
@@ -165,3 +184,34 @@ The code responsible for processing reach map changes during move&attack is:
 This function is called repeatedly during unit movement animations by `unit_animator::wait_until()`. It calls `events::draw()` which triggers the entire display update chain, ultimately calling `process_reachmap_changes()` during the animation. This processes the reach map changes and sets `reach_map_changed_` to false, causing the subsequent call during attack initiation to return immediately.
 
 The key insight is that **the display update mechanism runs during animations**, not just at discrete game state transitions. This ensures smooth visual updates but also means that reach map changes are processed as soon as the display is updated during the move animation, before the attack code has a chance to run.
+
+## Important Clarification: Why No Second Processing?
+
+A critical detail that explains the behavior is how `unhighlight_reach()` works:
+
+**File:** `src/game_display.cpp` (line 554)
+```cpp
+bool game_display::unhighlight_reach()
+{
+    units_that_can_reach_goal_.clear();
+    if(!reach_map_.empty()) {
+        reach_map_.clear();
+        reach_map_changed_ = true;
+        return true;
+    } else {
+        return false;
+    }
+}
+```
+
+**Key Point:** The function only sets `reach_map_changed_ = true` if the reach_map is NOT empty.
+
+During move&attack:
+1. **First call** (line 1206): `reach_map_` is not empty → clears it, sets flag to true
+2. **Animation**: `process_reachmap_changes()` processes changes, sets flag to false  
+3. **Second call** (line 1430): `reach_map_` IS ALREADY EMPTY → does nothing, flag remains false
+4. **No second processing**: Since flag is false, `process_reachmap_changes()` returns immediately
+
+This is **not** a case of `process_reachmap_changes()` being called twice with nothing in between. Instead, the second call to `unhighlight_reach()` is essentially a no-op because the reach_map was already cleared by the first call. This design prevents redundant processing and makes multiple calls to `unhighlight_reach()` safe and idempotent.
+
+See `UNHIGHLIGHT_REACH_EXPLANATION.md` for a more detailed explanation of this behavior.
